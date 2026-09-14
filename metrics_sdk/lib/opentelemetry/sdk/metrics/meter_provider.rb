@@ -130,7 +130,15 @@ module OpenTelemetry
         def register_synchronous_instrument(instrument)
           @mutex.synchronize do
             @metric_readers.each do |mr|
-              instrument.register_with_new_metric_store(mr.metric_store)
+              preferred_agg_class = mr.respond_to?(:default_aggregation) ? mr.default_aggregation(instrument.instrument_kind) : OpenTelemetry::SDK::Metrics::Export::MetricReader.new.default_aggregation(instrument.instrument_kind)
+
+              kwargs = { exemplar_reservoir: instrument.exemplar_reservoir }
+              if preferred_agg_class == OpenTelemetry::SDK::Metrics::Aggregation::Sum
+                kwargs[:monotonic] = true if %i[counter observable_counter].include?(instrument.instrument_kind)
+              end
+              
+              agg = preferred_agg_class.new(**kwargs)
+              instrument.register_with_new_metric_store(mr.metric_store, aggregation: agg)
             end
           end
         end

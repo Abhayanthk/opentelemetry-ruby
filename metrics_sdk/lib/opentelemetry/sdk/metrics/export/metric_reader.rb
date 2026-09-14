@@ -18,6 +18,18 @@ module OpenTelemetry
             @metric_store = OpenTelemetry::SDK::Metrics::State::MetricStore.new(cardinality_limit: aggregation_cardinality_limit)
           end
 
+          # Returns the default aggregation class for the given instrument kind.
+          def default_aggregation(instrument_kind)
+            case instrument_kind
+            when :histogram
+              OpenTelemetry::SDK::Metrics::Aggregation::ExplicitBucketHistogram
+            when :counter, :up_down_counter, :observable_counter, :observable_up_down_counter
+              OpenTelemetry::SDK::Metrics::Aggregation::Sum
+            when :gauge, :observable_gauge
+              OpenTelemetry::SDK::Metrics::Aggregation::LastValue
+            end
+          end
+
           # Collects and returns the current metrics from the metric store.
           def collect
             @metric_store.collect
